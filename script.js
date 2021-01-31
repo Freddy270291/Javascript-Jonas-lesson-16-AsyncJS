@@ -26,7 +26,7 @@ const countriesContainer = document.querySelector('.countries');
 
 ///// XMLHTTPREQUEST FUNCTION
 // It is the old way to make AJAX Calls
-
+/*
 const getCountryData = function (country) {
   const request = new XMLHttpRequest();
   request.open('GET', `https://restcountries.eu/rest/v2/name/${country}`); // We open the request (GET)
@@ -57,4 +57,99 @@ const getCountryData = function (country) {
 };
 
 getCountryData('Italy');
-getCountryData('hungary');
+*/
+
+// CALLBACK HELL: second AJAX Call to look for the first neighbour country
+
+const renderCountry = function (data, className = '') {
+  const html = `
+  <article class="country ${className}">
+      <img class="country__img" src="${data.flag}" />
+        <div class="country__data">
+          <h3 class="country__name">${data.name}</h3>
+          <h4 class="country__region">${data.region}</h4>
+          <p class="country__row"><span>👫</span>${(
+            +data.population / 1000000
+          ).toFixed(1)}</p>
+          <p class="country__row"><span>🗣️</span>${data.languages[0].name}</p>
+          <p class="country__row"><span>💰</span>${data.currencies[0].name}</p>
+        </div>
+  </article>
+        `;
+  countriesContainer.insertAdjacentHTML('beforeend', html);
+  countriesContainer.style.opacity = 1;
+};
+/*
+const getCountryAndNeighbour = function (country) {
+  // AJAX Call country 1
+  const request = new XMLHttpRequest();
+  request.open('GET', `https://restcountries.eu/rest/v2/name/${country}`); // We open the request (GET)
+  request.send(); // It sends the request to the URL - it fetches the data in the background
+
+  // Register a callback for the request on the load event
+  request.addEventListener('load', function () {
+    // Convert the JSON to a string:
+    const [data] = JSON.parse(this.responseText);
+
+    //Render Country
+    renderCountry(data);
+
+    // Get the neighobour country 2
+    const [neighbour] = data.borders;
+
+    // Return in case there are no neighbour counstries
+    if (!neighbour) return;
+
+    // AJAX Call country 2 (dependent on the first one)
+    const request2 = new XMLHttpRequest();
+    request2.open('GET', `https://restcountries.eu/rest/v2/alpha/${neighbour}`); // We open the request (GET)
+    request2.send(); // It sends the request to the URL - it fetches the data in the background
+
+    request2.addEventListener('load', function () {
+      const data2 = JSON.parse(this.responseText);
+
+      renderCountry(data2, 'neighbour');
+    });
+  });
+};
+
+getCountryAndNeighbour('Italy');
+*/
+
+// PROMISES AND THE FETCH API
+
+const request = fetch('https://restcountries.eu/rest/v2/name/Italy'); // This returns a Promise {<pending>}
+// Promise: An object that is used as a placeholder for the future result of an asynchronous operation
+// Advantages:
+// a. we no longer need to rely on events and callback functions to handle async results
+// b. Instead of nesting callbacks, we can CHAIN PROMISES for a sequence of async operations --> escaping callback hell!
+
+// Lifecycle of a Promise:
+// 0. Pending: Before the future value is available
+// 1. Settled: When the async function finished and there is a result
+// 1a. Fulfilled Promises - the value is now available
+// 1b. Rejected Promises - an error happened
+
+// The Promise is settled once, after that it is impossible to be changed
+// we CONSUME A PROMISE when we already have a promise (before we have to build it)
+
+// CONSUMING A PROMISE:
+const getCountryData = function (country) {
+  // fetch(`https://restcountries.eu/rest/v2/name/${country}`); // This returns a pending Promise
+  fetch(`https://restcountries.eu/rest/v2/name/${country}`)
+    .then(function (response) {
+      return response.json(); // Method available to all the responses that are coming from a fetch function. It is also an async function
+    })
+    .then(function (data) {
+      renderCountry(data[0]);
+    });
+};
+getCountryData('Italy');
+
+// With arrow functions:
+const getCountryData2 = function (country) {
+  fetch(`https://restcountries.eu/rest/v2/name/${country}`)
+    .then(response => response.json())
+    .then(data => renderCountry(data[0]));
+};
+getCountryData2('Italy');
