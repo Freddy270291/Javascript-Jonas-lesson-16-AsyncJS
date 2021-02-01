@@ -3,6 +3,31 @@
 const btn = document.querySelector('.btn-country');
 const countriesContainer = document.querySelector('.countries');
 
+const renderCountry = function (data, className = '') {
+  const html = `
+  <article class="country ${className}">
+      <img class="country__img" src="${data.flag}" />
+        <div class="country__data">
+          <h3 class="country__name">${data.name}</h3>
+          <h4 class="country__region">${data.region}</h4>
+          <p class="country__row"><span>👫</span>${(
+            +data.population / 1000000
+          ).toFixed(1)}</p>
+          <p class="country__row"><span>🗣️</span>${data.languages[0].name}</p>
+          <p class="country__row"><span>💰</span>${data.currencies[0].name}</p>
+        </div>
+  </article>
+        `;
+  countriesContainer.insertAdjacentHTML('beforeend', html);
+  // countriesContainer.style.opacity = 1;
+};
+
+// Function that will render an error
+const renderError = function (msg) {
+  countriesContainer.insertAdjacentText('beforeend', msg);
+  // countriesContainer.style.opacity = 1;
+};
+
 ///////////////////////////////////////
 // ASYNCHRONOUS JS, AJAX AND APIS
 // The most important use is to make AJAX calls to APIs
@@ -61,24 +86,6 @@ getCountryData('Italy');
 
 // CALLBACK HELL: second AJAX Call to look for the first neighbour country
 
-const renderCountry = function (data, className = '') {
-  const html = `
-  <article class="country ${className}">
-      <img class="country__img" src="${data.flag}" />
-        <div class="country__data">
-          <h3 class="country__name">${data.name}</h3>
-          <h4 class="country__region">${data.region}</h4>
-          <p class="country__row"><span>👫</span>${(
-            +data.population / 1000000
-          ).toFixed(1)}</p>
-          <p class="country__row"><span>🗣️</span>${data.languages[0].name}</p>
-          <p class="country__row"><span>💰</span>${data.currencies[0].name}</p>
-        </div>
-  </article>
-        `;
-  countriesContainer.insertAdjacentHTML('beforeend', html);
-  countriesContainer.style.opacity = 1;
-};
 /*
 const getCountryAndNeighbour = function (country) {
   // AJAX Call country 1
@@ -132,7 +139,7 @@ const request = fetch('https://restcountries.eu/rest/v2/name/Italy'); // This re
 
 // The Promise is settled once, after that it is impossible to be changed
 // we CONSUME A PROMISE when we already have a promise (before we have to build it)
-
+/*
 // CONSUMING A PROMISE:
 const getCountryData = function (country) {
   // fetch(`https://restcountries.eu/rest/v2/name/${country}`); // This returns a pending Promise
@@ -147,9 +154,98 @@ const getCountryData = function (country) {
 getCountryData('Italy');
 
 // With arrow functions:
-const getCountryData2 = function (country) {
+const getCountryData = function (country) {
   fetch(`https://restcountries.eu/rest/v2/name/${country}`)
     .then(response => response.json())
     .then(data => renderCountry(data[0]));
 };
-getCountryData2('Italy');
+getCountryData('Italy');
+
+
+// CHAINING PROMISES:
+
+// With arrow functions:
+const getCountryData = function (country) {
+  fetch(`https://restcountries.eu/rest/v2/name/${country}`)
+    .then(response => {
+      if (!response.ok) throw new Error('Country not found');
+      return response.json();
+    })
+    .then(data => {
+      renderCountry(data[0]);
+      const neighbour = data[0].borders[0];
+
+      if (!neighbour) return;
+      // Country 2
+      return fetch(`https://restcountries.eu/rest/v2/alpha/${neighbour}`);
+    })
+    .then(response => response.json())
+    .then(data => renderCountry(data, 'neighbour'))
+    .catch(err => {
+      // second method, global handler of errors in the chain
+      console.error(`${err}`);
+      renderError('Something went wrong');
+    })
+    .finally(() => {
+      //Called in any case (useful for hiding charging spinner)
+      countriesContainer.style.opacity = 1;
+    });
+};
+*/
+
+// HANDLING REJECTED PROMISES (catch the error)
+// The only way in which the fetch promise rejects is when the user loses the internet connection
+
+// Ways of handling rejections:
+// 1. Pass a second callback function into the then method (the first callback is always for the fulfilled promise)
+// 2. We can handle all the error globally instead of inserting the second callback everywhere. We add a CATCH METHOD at the end of the chain
+
+// THROWING ERRORS MANUALLY
+// REQUEST 404 ERROR - the API can't find any result, it doesn't reject the promise
+// When the request goes well, the Response "ok" is true, when there is an error is false
+// We can add (above):
+/*
+if(!response.ok)
+throw new Error(...error message)
+*/
+
+// Helper function:
+
+const getJSON = function (url, errorMsg = 'Something went wrong!') {
+  fetch(url).then(response => {
+    if (!response.ok) throw new Error(`${errorMsg} ${response.status}`);
+    return response.json();
+  });
+};
+
+const getCountryData = function (country) {
+  getJSON(
+    `https://restcountries.eu/rest/v2/name/${country}`,
+    'Country not found'
+  )
+    .then(data => {
+      renderCountry(data[0]);
+      const neighbour = data[0].borders[0];
+
+      if (!neighbour) throw new Error('No neighbour found');
+      // Country 2
+      return getJSON(
+        `https://restcountries.eu/rest/v2/alpha/${neighbour}`,
+        'Country not found'
+      );
+    })
+    .then(data => renderCountry(data, 'neighbour'))
+    .catch(err => {
+      // second method, global handler of errors in the chain
+      console.error(`${err}`);
+      renderError('Something went wrong');
+    })
+    .finally(() => {
+      //Called in any case (useful for hiding charging spinner)
+      countriesContainer.style.opacity = 1;
+    });
+};
+
+btn.addEventListener('click', function () {
+  getCountryData('Italy');
+});
