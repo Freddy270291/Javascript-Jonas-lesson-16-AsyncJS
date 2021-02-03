@@ -309,3 +309,16 @@ whereAmI(-33.933, 18.474);
 // EVENT LOOP
 // It sends callback from queue to call stack
 // If the stack is empty (no code is executed at the moment), it takes the first callback from the callback queue and puts it in the call stack to be executed (EVENT LOOP TAKE)
+
+// The web API environment, the callback queue and the event loop make possible that async code can be executed in a non-blocking way with only one thread of execution in the engine
+// The PROMISE from a fetch goes in the MICROTASKS QUEUE, that has priority over the callback queue
+
+console.log('Test start'); // Primo
+setTimeout(() => console.log('0 second timer'), 0); // Ultimo ad essere eseguito, è nella callback queue
+Promise.resolve('Resolved promised 1').then(res => console.log(res)); // Promise che ha precedenza per la microtask
+Promise.resolve('Resolved promised 2').then(res => {
+  for (let i = 0; i < 100000; i++) {} // Really long time to be executed, so setTime doesn't work after 0 sec but only after this finishes
+  console.log(res);
+});
+
+console.log('Test end'); // Secondo (fa parte della call stack principale)
