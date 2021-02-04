@@ -313,6 +313,7 @@ whereAmI(-33.933, 18.474);
 // The web API environment, the callback queue and the event loop make possible that async code can be executed in a non-blocking way with only one thread of execution in the engine
 // The PROMISE from a fetch goes in the MICROTASKS QUEUE, that has priority over the callback queue
 
+/*
 console.log('Test start'); // Primo
 setTimeout(() => console.log('0 second timer'), 0); // Ultimo ad essere eseguito, è nella callback queue
 Promise.resolve('Resolved promised 1').then(res => console.log(res)); // Promise che ha precedenza per la microtask
@@ -322,3 +323,89 @@ Promise.resolve('Resolved promised 2').then(res => {
 });
 
 console.log('Test end'); // Secondo (fa parte della call stack principale)
+*/
+
+/*
+// BUILDING A SIMPLE PROMISE - to wrap old code based functions into Promises (PROMISIFY)
+// We create the new Promise using the Promise constructor
+// It takes only one argument: the EXECUTER FUNCTION, that takes 2 arguments, the resolve and reject
+// The executer function is the function that contains the asynchronise behaviour that we will try tohandle with the promise
+
+const lotteryPromise = new Promise(function (resolve, reject) {
+  console.log('Lottery draw is happening');
+
+  setTimeout(function () {
+    if (Math.random() >= 0.5) {
+      resolve('You Win'); // the Promise is fulfilled, we pass the function to handle with the Then method
+    } else {
+      reject(new Error('You Lose')); // We pass the error message that we want to handle in the catch method
+    }
+  }, 2000);
+});
+
+lotteryPromise.then(res => console.log(res)).catch(err => console.error(err));
+
+// We Promisify the setTimeOut function:
+const wait = function (seconds) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, seconds * 1000);
+  });
+};
+
+wait(2)
+  .then(() => {
+    console.log('I waited for 2 seconds');
+    return wait(1);
+  })
+  .then(() => console.log('I waited for 1 second'));
+
+// Create a fulfilled or rejected promise immediately:
+Promise.resolve('You win').then(x => console.log(x));
+Promise.reject('You lose').catch(x => console.error(x));
+*/
+
+// Promisifying the Geolocation API
+
+const getPosition = function () {
+  return new Promise(function (resolve, reject) {
+    //navigator.geolocation.getCurrentPosition(
+    //  position => resolve(position),
+    //  err => reject(err)
+    //);
+
+    // THis is the same:
+    navigator.geolocation.getCurrentPosition(resolve, reject);
+  });
+};
+
+// getPosition().then(pos => console.log(pos));
+
+const whereAmI = function () {
+  getPosition()
+    .then(pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+
+      return fetch(`https://geocode.xyz/${lat},${lng}?geoit=json`);
+    })
+    .then(res => {
+      if (!res.ok) throw new Error(`Problem with geocoding ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      console.log(`You are in ${data.city}, ${data.country}`);
+
+      return fetch(`https://restcountries.eu/rest/v2/name/${data.country}`);
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Country not found');
+      return res.json();
+    })
+    .then(data => renderCountry(data[0]))
+    .catch(err => console.error(`${err.message}`))
+    .finally(() => {
+      //Called in any case (useful for hiding charging spinner)
+      countriesContainer.style.opacity = 1;
+    });
+};
+
+btn.addEventListener('click', whereAmI);
