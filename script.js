@@ -25,9 +25,15 @@ const renderCountry = function (data, className = '') {
 // Function that will render an error
 const renderError = function (msg) {
   countriesContainer.insertAdjacentText('beforeend', msg);
-  // countriesContainer.style.opacity = 1;
+  countriesContainer.style.opacity = 1;
 };
 
+const getJSON = function (url, errorMsg = 'Something went wrong!') {
+  return fetch(url).then(response => {
+    if (!response.ok) throw new Error(`${errorMsg} ${response.status}`);
+    return response.json();
+  });
+};
 ///////////////////////////////////////
 // ASYNCHRONOUS JS, AJAX AND APIS
 // The most important use is to make AJAX calls to APIs
@@ -485,6 +491,7 @@ createImage('img/img-1.jpg')
   .catch(err => console.error(err));
 */
 
+/*
 // CONSUMING PROMISES WITH ASYNC/AWAIT (Syntetic sugar over Consuming Promises)
 // async function: Function that keeps running in the background while performing the code that is inside of it. Then, when the function is done, it automatically returns a Promise
 // Inside the async function we can have one or more AWAIT STATEMENTS: they will stop the code execution until the Promise is fulfilled
@@ -497,20 +504,95 @@ const getPosition = function () {
 };
 
 const whereAmI = async function () {
-  // Geolocation
-  const pos = await getPosition();
-  const { latitude: lat, longitude: lng } = pos.coords;
+  try {
+    // Geolocation
+    const pos = await getPosition();
+    const { latitude: lat, longitude: lng } = pos.coords;
 
-  // Reverse geocoding
-  const resGeo = await fetch(`https://geocode.xyz/${lat},${lng}?geoit=json`);
-  const dataGeo = await resGeo.json();
+    // Reverse geocoding
+    const resGeo = await fetch(`https://geocode.xyz/${lat},${lng}?geoit=json`);
+    if (!resGeo.ok) throw new Error('Problem getting location data');
 
-  // Country data
-  const res = await fetch(
-    `https://restcountries.eu/rest/v2/name/${dataGeo.country}`
-  );
-  const data = await res.json();
-  renderCountry(data[0]);
+    const dataGeo = await resGeo.json();
+
+    // Country data
+    const res = await fetch(
+      `https://restcountries.eu/rest/v2/name/${dataGeo.country}`
+    );
+    if (!res.ok) throw new Error('Problem getting country');
+
+    const data = await res.json();
+    renderCountry(data[0]);
+
+    return `You are in ${dataGeo.city}, ${dataGeo.country}`; // Use the .THEN METHOD
+  } catch (err) {
+    console.error(err);
+    renderError(`${err.message}`);
+
+    // Reject promise returned from async function
+    throw err;
+  }
 };
 
-whereAmI();
+console.log('1: Will get location');
+whereAmI().then(city => console.log(city)); // Since the async function returns a Promise, to have it we should use the .then method
+console.log('2: Finished getting location');
+
+// ERROR HANDLING WITH ASYNC/AWAIT
+// We can't use the Catch method because we can't attach it anywhere
+// Instead, we use a TRY/CATCH statement:
+
+// try {
+//   let y = 1;
+//   const x = 2;
+//   x = 3;
+// } catch (err) {
+//   alert(err.message);
+// }
+
+*/
+
+// RUNNING PROMISES IN PARALLEL
+// Like this, the promises are run in sequence,not in parallel:
+/*
+const get3Countries = async function (c1, c2, c3) {
+  try {
+    const [data1] = await getJSON(
+      `https://restcountries.eu/rest/v2/name/${c1}`
+    );
+    const [data2] = await getJSON(
+      `https://restcountries.eu/rest/v2/name/${c2}`
+    );
+    const [data3] = await getJSON(
+      `https://restcountries.eu/rest/v2/name/${c3}`
+    );
+
+    console.log([data1.capital, data2.capital, data3.capital]);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+get3Countries('Italy', 'Hungary', 'Spain');
+
+*/
+
+// Like this in parallel, we use the Promise.all combination function:
+
+/*
+const get3Countries = async function (c1, c2, c3) {
+  try {
+    const data = await Promise.all([
+      getJSON(`https://restcountries.eu/rest/v2/name/${c1}`),
+      getJSON(`https://restcountries.eu/rest/v2/name/${c2}`),
+      getJSON(`https://restcountries.eu/rest/v2/name/${c3}`),
+    ]);
+
+    console.log(data.map(d => d[0].capital));
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+get3Countries('Italy', 'Hungary', 'Spain');
+
